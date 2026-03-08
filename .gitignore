@@ -1,0 +1,43 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_metadata/
+
+# Data – keep directory structure, ignore actual files
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Serialised artefacts
+*.parquet
+*.csv
+*.pkl
+*.joblib
+
+# Results – keep structure
+results/forecasts/*
+results/plots/*
+results/*.csv
+!results/forecasts/.gitkeep
+!results/plots/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Secrets / environment
+.env
+*.pem

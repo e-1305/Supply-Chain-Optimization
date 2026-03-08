@@ -1,0 +1,65 @@
+project:
+  name: "Supply Chain Optimization: Demand Forecasting + Inventory Optimization + Simulation"
+
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  processed_file: "demand_features.parquet"
+  date_column: "date"
+  demand_column: "sales"
+  sku_column: "item_id"
+  store_column: "store_id"
+  promo_column: "onpromotion"
+  frequency: "D"  # daily
+
+forecasting:
+  forecast_horizon_days: 90
+  test_horizon_days: 30
+  moving_average_window: 7
+  arima:
+    order: [1, 1, 1]
+    seasonal_order: [0, 0, 0, 0]
+  prophet:
+    weekly_seasonality: true
+    yearly_seasonality: true
+  gradient_boosting:
+    model: "xgboost"
+    max_depth: 5
+    learning_rate: 0.1
+    n_estimators: 300
+    subsample: 0.8
+    colsample_bytree: 0.8
+    lag_features: [1, 2, 3, 7, 14, 28]
+    rolling_windows: [7, 14, 28]
+
+inventory:
+  default_lead_time_days: 7
+  annual_holding_cost_per_unit: 1.5
+  ordering_cost_per_order: 50.0
+  stockout_cost_per_unit: 10.0
+  service_levels:
+    - 0.90
+    - 0.95
+    - 0.99
+
+simulation:
+  horizon_days: 365
+  n_scenarios: 1000
+  seed: 42
+  demand_distribution: "poisson"  # or "normal"
+  lead_time_distribution: "discrete"  # e.g. {5, 7, 10} days
+  lead_time_days: [5, 7, 10]
+  lead_time_probs: [0.3, 0.5, 0.2]
+
+visualization:
+  style: "seaborn-v0_8"
+
+service_levels:
+  - 0.90
+  - 0.95
+  - 0.99
+
+results:
+  forecasts_dir: results/forecasts
+  plots_dir: results/plots
+  scenario_file: results/scenario_analysis.csv
