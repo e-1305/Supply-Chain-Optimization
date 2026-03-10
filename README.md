@@ -50,6 +50,10 @@ Demand parameters derived directly from the Prophet 90-day forecast (mean = 19.4
 
 The EOQ of ~687 units reflects the high fixed ordering cost ($50/order) relative to the low daily holding cost ($1.50/unit), producing an optimal policy of large, infrequent orders. If the ordering cost were negotiated down to $20, EOQ drops to ~435 units and order frequency increases — a lever worth modeling when negotiating supplier contracts.
 
+## Key Insight
+
+Inventory decisions should not be driven purely by service level targets but by the marginal cost of preventing stockouts.
+
 ---
 
 ## Architecture
@@ -212,3 +216,44 @@ Outputs are written to `results/forecasts/`, `results/plots/`, and `results/scen
 
 [Store Item Demand Forecasting Challenge](https://www.kaggle.com/competitions/demand-forecasting-kernels-only) — Kaggle  
 50 items × 10 stores × 5 years of daily sales. Clean panel time series with strong weekly and yearly seasonality.
+
+---
+
+## Example Workflow
+
+The pipeline follows a typical analytics workflow used in operations consulting:
+
+1. **Ingest demand data**
+   - Load transactional sales data
+   - Normalize schema across datasets
+   - Generate time-series features
+
+2. **Forecast demand**
+   - Train multiple forecasting models
+   - Evaluate with MAE, RMSE, and MAPE
+   - Select the best-performing model per SKU
+
+3. **Optimize inventory policy**
+   - Compute EOQ based on demand and cost structure
+   - Estimate safety stock under service-level constraints
+   - Derive reorder points accounting for lead-time uncertainty
+
+4. **Validate via simulation**
+   - Run Monte Carlo simulations of the $(Q,R)$ policy
+   - Measure service levels, stockouts, and total costs
+   - Compare policies across multiple service-level scenarios
+
+This workflow mirrors the analytical approach used in supply chain consulting projects when transitioning organizations from spreadsheet-based planning to **data-driven inventory optimization systems**.
+
+---
+
+## Reproducibility
+
+All experiments are fully reproducible. The repository is structured so that:
+
+- Configuration parameters are centralized in `config/parameters.yaml`
+- Raw datasets are stored in `data/raw/`
+- Intermediate datasets are stored in `data/processed/`
+- Results and artifacts are written to `results/`
+
+Running `run_pipeline.py` executes the full forecasting → optimization → simulation workflow.
