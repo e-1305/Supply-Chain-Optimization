@@ -14,9 +14,9 @@ class InventoryParameters:
     """
 
     demand_mean: float  # average demand per period (e.g. per day)
-    demand_std: float  # standard deviation of demand per period
+    demand_std: float  # std of demand per period (use forecast error, e.g. RMSE)
     lead_time: float  # lead time in periods (e.g. days)
-    holding_cost: float  # per-unit holding cost per period
+    holding_cost: float  # ANNUAL per-unit holding cost (as used by EOQ)
     ordering_cost: float  # fixed cost per replenishment order
     stockout_cost: float  # per-unit stockout or penalty cost
     service_level: float  # target cycle service level, between 0 and 1
