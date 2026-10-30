@@ -148,16 +148,25 @@ def stage_forecasting(
 # Stage 3 – Inventory optimisation
 # ---------------------------------------------------------------------------
 
-def stage_inventory(future_fc: pd.DataFrame, cfg: dict) -> object:
+def stage_inventory(future_fc: pd.DataFrame, metrics: dict, cfg: dict) -> object:
     from inventory_models import InventoryParameters
 
     icfg = cfg["inventory"]
-    valid_cols = future_fc.dropna(axis=1, how="all").columns.tolist()
-    demand_signal = future_fc[valid_cols].mean(axis=1)
+
+    # Demand signal = forecast of the best model on the hold-out (lowest RMSE).
+    # Demand uncertainty = that model's forecast error (RMSE), NOT the std of
+    # the forecast curve itself, which is far smoother than real demand and
+    # would understate safety stock.
+    available = [m for m in metrics if m in future_fc.columns and future_fc[m].notna().all()]
+    if not available:
+        raise ValueError("No model produced a complete forecast.")
+    best = min(available, key=lambda m: metrics[m].rmse)
+    demand_signal = future_fc[best]
+    log.info("Best model on hold-out: %s (RMSE=%.2f)", best, metrics[best].rmse)
 
     params = InventoryParameters(
         demand_mean=float(demand_signal.mean()),
-        demand_std=float(demand_signal.std()) or 1.0,
+        demand_std=float(metrics[best].rmse),
         lead_time=float(icfg["default_lead_time_days"]),
         holding_cost=float(icfg["annual_holding_cost_per_unit"]),
         ordering_cost=float(icfg["ordering_cost_per_order"]),
@@ -270,7 +279,7 @@ def main() -> None:
         df = stage_data(cfg)
 
     future_fc, metrics = stage_forecasting(df, cfg, store_id=args.store, item_id=args.item)
-    params = stage_inventory(future_fc, cfg)
+    params = stage_inventory(future_fc, metrics, cfg)
     scenarios = stage_simulation(params, cfg)
 
     if not args.skip_plots:

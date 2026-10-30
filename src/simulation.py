@@ -66,6 +66,7 @@ def simulate_policy(
     params: InventoryParameters,
     policy: Policy,
     sim_config: SimulationConfig,
+    seed: Optional[int] = None,
 ) -> SimulationResults:
     """Simulate daily inventory dynamics for a single (Q, R) policy.
 
@@ -74,7 +75,9 @@ def simulate_policy(
     - If inventory position (on-hand + on-order) <= R, place an order of size Q.
     - After a random lead time, the order arrives and increases on-hand inventory.
     """
-    rng = np.random.default_rng(sim_config.seed)
+    rng = np.random.default_rng(sim_config.seed if seed is None else seed)
+    # holding_cost is annual (same unit as EOQ); the simulation runs in days.
+    holding_cost_per_day = params.holding_cost / 365.0
 
     on_hand = policy.order_quantity + policy.safety_stock
     inventory_position = on_hand
@@ -126,7 +129,7 @@ def simulate_policy(
             inventory_position += policy.order_quantity
             ordering_costs += params.ordering_cost
 
-        holding_costs += on_hand * params.holding_cost
+        holding_costs += on_hand * holding_cost_per_day
         on_hand_history.append(on_hand)
 
     avg_inventory = float(np.mean(on_hand_history))
@@ -191,20 +194,29 @@ def run_scenario_analysis(
     records: List[Dict[str, float]] = []
     for sl in service_levels:
         policy = build_policy_for_service_level(params, service_level=sl)
-        results = simulate_policy(params=params, policy=policy, sim_config=sim_config)
+        # n_scenarios independent demand / lead-time paths. The same seeds are
+        # reused for every service level (common random numbers), so the
+        # comparison between policies is not blurred by sampling noise.
+        runs = [
+            simulate_policy(params=params, policy=policy, sim_config=sim_config, seed=sim_config.seed + k)
+            for k in range(sim_config.n_scenarios)
+        ]
+        total_costs = np.array([r.average_total_cost for r in runs])
         records.append(
             {
                 "service_level_target": sl,
                 "order_quantity": policy.order_quantity,
                 "reorder_point": policy.reorder_point,
                 "safety_stock": policy.safety_stock,
-                "average_inventory": results.average_inventory,
-                "stockout_rate": results.stockout_rate,
-                "fill_rate": results.fill_rate,
-                "avg_holding_cost": results.average_holding_cost,
-                "avg_stockout_cost": results.average_stockout_cost,
-                "avg_ordering_cost": results.average_ordering_cost,
-                "avg_total_cost": results.average_total_cost,
+                "average_inventory": float(np.mean([r.average_inventory for r in runs])),
+                "stockout_rate": float(np.mean([r.stockout_rate for r in runs])),
+                "fill_rate": float(np.mean([r.fill_rate for r in runs])),
+                "avg_holding_cost": float(np.mean([r.average_holding_cost for r in runs])),
+                "avg_stockout_cost": float(np.mean([r.average_stockout_cost for r in runs])),
+                "avg_ordering_cost": float(np.mean([r.average_ordering_cost for r in runs])),
+                "avg_total_cost": float(total_costs.mean()),
+                "p95_total_cost": float(np.percentile(total_costs, 95)),
+                "n_scenarios": sim_config.n_scenarios,
             }
         )
     return pd.DataFrame.from_records(records)
